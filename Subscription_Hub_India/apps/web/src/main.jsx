@@ -15,13 +15,13 @@ const routeTabs = { '/': 'Overview', '/analytics': 'Analytics', '/subscriptions'
 const tabRoutes = { Overview: '/', Analytics: '/analytics', Subscriptions: '/subscriptions', Settings: '/settings' };
 
 async function request(path, options = {}) {
-  // Automatically prepend /api to any backend route path if it's missing
-  let formattedPath = path;
-  if (!formattedPath.startsWith('/api')) {
-    formattedPath = formattedPath.startsWith('/') ? `/api${formattedPath}` : `/api/${formattedPath}`;
+  // Ensure the path always starts with /api (preventing double /api if already present)
+  let cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (!cleanPath.startsWith('/api/')) {
+    cleanPath = `/api${cleanPath}`;
   }
 
-  const response = await fetch(`${API}${formattedPath}`, {
+  const response = await fetch(`${API}${cleanPath}`, {
     method: options.method || (options.body ? 'POST' : 'GET'),
     headers: {
       'Content-Type': 'application/json',
