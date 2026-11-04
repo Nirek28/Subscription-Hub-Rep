@@ -3,42 +3,18 @@ import { createRoot } from 'react-dom/client';
 import SubscriptionManager from './components/SubscriptionManager.jsx';
 import IndiaBilling from './components/IndiaBilling.jsx';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
+import { apiFetch } from './api.js';
 import './styles.css';
 
-const RAW_API = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').trim().replace(/\/+$/, '');
-const API = RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`;
 const emptyAnalytics = { monthlySpend: 0, activeCount: 0, canceledCount: 0, bySubscription: [], insights: [] };
-const money = (value) => `Rs.${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value || 0));
 const daysUntil = (date) => Math.ceil((new Date(date) - Date.now()) / 86400000);
-const todayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase();
+const todayLabel = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase();
 const iconFor = (name = '') => ({ Netflix: 'N', Spotify: '◖', CloudBox: '☁', 'Studio Fitness': '✳' }[name] || name.slice(0, 1).toUpperCase());
 const routeTabs = { '/': 'Overview', '/analytics': 'Analytics', '/subscriptions': 'Subscriptions', '/settings': 'Settings' };
 const tabRoutes = { Overview: '/', Analytics: '/analytics', Subscriptions: '/subscriptions', Settings: '/settings' };
 
-async function request(path, options = {}) {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  const finalPath = cleanPath.startsWith('/api/') ? cleanPath.slice(4) : cleanPath;
-  const token = localStorage.getItem('subhub_token') || localStorage.getItem('token') || '';
-
-  const response = await fetch(`${API}${finalPath}`, {
-    credentials: 'include',
-    ...options,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-
-  const contentType = response.headers.get('content-type') || '';
-  const data = contentType.includes('application/json')
-    ? await response.json()
-    : { error: `Request failed with status ${response.status}` };
-
-  if (!response.ok) throw new Error(data.error || 'Request failed');
-  return data;
-}
+const request = apiFetch;
 
 function AuthScreen({ onAuthenticated }) {
   const navigate = useNavigate();
@@ -71,7 +47,7 @@ function AuthScreen({ onAuthenticated }) {
         setNotice(result.message);
       }
     } catch (e) {
-      setError(e.message === 'Failed to fetch' ? 'Cannot reach the API. Start the project with npm run dev and try again.' : e.message);
+      setError(e.message === 'Failed to fetch' ? 'Cannot reach the API. Locally, run npm run dev; in production, wait a moment if the server is waking up.' : e.message);
     } finally { setBusy(false); }
   };
 

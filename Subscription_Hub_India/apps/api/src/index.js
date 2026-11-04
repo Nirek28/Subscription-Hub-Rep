@@ -11,6 +11,7 @@ import auth from './routes/auth.js';
 import indiaRoutes from './routes/india.js';
 import razorpayRoutes, { webhook } from './routes/razorpay.js';
 import { requireAuth } from './services/auth.js';
+import { razorpayConfigured, razorpayMode, setuConfigured, setuMode } from './services/providers.js';
 import { initializeRepository, repositoryMode } from './services/repository.js';
 import { runRenewalScan } from './services/renewalScan.js';
 
@@ -22,7 +23,10 @@ if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) throw 
 if (!process.env.SESSION_SECRET) console.warn('Using development-only SESSION_SECRET. Set SESSION_SECRET in .env before deployment.');
 
 const app = express();
-app.set('trust proxy', 1);
+// Render (and Vercel's rewrite in front of it) add X-Forwarded-For. Without this,
+// express-rate-limit sees the proxy's IP for every visitor and logs validation errors.
+// Set TRUST_PROXY=2 if all visitors still appear to share one rate-limit bucket.
+app.set('trust proxy', Number(process.env.TRUST_PROXY || 1));
 app.use(helmet());
 app.use(cors({
   origin: true,
@@ -53,7 +57,12 @@ app.get('/api/health', (_req, res) => res.json({
   ok: true,
   mode: repositoryMode(),
   auth: 'enabled',
-  integrations: { region: 'India' }
+  integrations: {
+    region: 'India',
+    razorpay: { configured: razorpayConfigured(), mode: razorpayMode(), webhookSecret: !!process.env.RAZORPAY_WEBHOOK_SECRET, plans: !!process.env.RAZORPAY_PLAN_IDS },
+    setu: { configured: setuConfigured(), mode: setuMode() },
+    webOrigin: process.env.WEB_ORIGIN || null
+  }
 }));
 
 app.use('/api/auth', auth);
