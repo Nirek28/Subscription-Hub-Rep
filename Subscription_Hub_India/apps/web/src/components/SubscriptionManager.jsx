@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const API = import.meta.env.VITE_API_URL || '/api';
+const API = import.meta.env.VITE_API_URL || "https://subscription-hub-rep.onrender.com";
 
 export async function call(path, body, method) {
   const r = await fetch(API + path, {

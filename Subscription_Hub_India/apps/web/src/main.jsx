@@ -5,7 +5,7 @@ import IndiaBilling from './components/IndiaBilling.jsx';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import './styles.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API = import.meta.env.VITE_API_URL || "https://subscription-hub-rep.onrender.com";
 const emptyAnalytics = { monthlySpend: 0, activeCount: 0, canceledCount: 0, bySubscription: [], insights: [] };
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value || 0));
 const daysUntil = (date) => Math.ceil((new Date(date) - Date.now()) / 86400000);
