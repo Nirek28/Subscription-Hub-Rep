@@ -284,7 +284,7 @@ function App() {
   };
   useEffect(() => {
     let active = true;
-    request('/auth/me').then((result) => { if (active) setUser(result.user); }).catch(() => {}).finally(() => { if (active) setAuthChecking(false); });
+    request('/api/auth/me').then((result) => { if (active) setUser(result.user); }).catch(() => {}).finally(() => { if (active) setAuthChecking(false); });
     return () => { active = false; };
   }, []);
   useEffect(() => {
@@ -340,7 +340,7 @@ function App() {
     navigate('/subscriptions', { replace: true });
   }, [location.pathname, user, live, subs, navigate]);
   const logout = async () => {
-    try { await request('/auth/logout', { method: 'POST', body: '{}' }); } catch {}
+    try { await request('/api/auth/logout', { method: 'POST', body: '{}' }); } catch {}
     setUser(null); setSubs([]); setAnalytics(emptyAnalytics); navigate('/'); setLive(false);
   };
   const initials = user?.name?.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'U';
