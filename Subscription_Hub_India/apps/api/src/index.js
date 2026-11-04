@@ -22,6 +22,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) throw 
 if (!process.env.SESSION_SECRET) console.warn('Using development-only SESSION_SECRET. Set SESSION_SECRET in .env before deployment.');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
   origin: true,
