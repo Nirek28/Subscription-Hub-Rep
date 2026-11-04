@@ -13,7 +13,7 @@ export default function IndiaBilling({onChanged}){
  const currentRequest=()=>{const k=requestKey();let id=requestIds.current[k];try{id=id||sessionStorage.getItem(k);}catch{}if(!id)id=crypto.randomUUID();requestIds.current[k]=id;try{sessionStorage.setItem(k,id);}catch{}return id;};
  const clearRequest=()=>{const k=requestKey();delete requestIds.current[k];try{sessionStorage.removeItem(k);}catch{}};
  const [status,setStatus]=useState(null),[plans,setPlans]=useState([]),[plan,setPlan]=useState(''),[subs,setSubs]=useState([]),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[history,setHistory]=useState(null);
- const load=async()=>{const me=await call('/api/auth/me');userId.current=me.user.id;const st=await call('/india/status');setStatus(st);setSubs(await call('/razorpay/subscriptions'));setPending(await call('/razorpay/pending-checkouts'));if(st.razorpay.configured){const ps=await call('/razorpay/plans');setPlans(ps);setPlan(p=>p||ps[0]?.id||'');}};
+ const load=async()=>{const me=await call('/auth/me');userId.current=me.user.id;const st=await call('/india/status');setStatus(st);setSubs(await call('/razorpay/subscriptions'));setPending(await call('/razorpay/pending-checkouts'));if(st.razorpay.configured){const ps=await call('/razorpay/plans');setPlans(ps);setPlan(p=>p||ps[0]?.id||'');}};
  useEffect(()=>{load().catch(e=>setMessage(e.message));},[]);
  const run=async(fn)=>{setBusy(true);setMessage('');try{await fn();}catch(e){setMessage(e.message);try{setPending(await call('/razorpay/pending-checkouts'));}catch{}}finally{setBusy(false);}};
  const refresh=async()=>{await load();await onChanged?.();};

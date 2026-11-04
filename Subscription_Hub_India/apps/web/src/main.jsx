@@ -5,7 +5,7 @@ import IndiaBilling from './components/IndiaBilling.jsx';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import './styles.css';
 
-const API = import.meta.env.VITE_API_URL || "https://subscription-hub-rep.onrender.com";
+const API = import.meta.env.VITE_API_URL || "";
 const emptyAnalytics = { monthlySpend: 0, activeCount: 0, canceledCount: 0, bySubscription: [], insights: [] };
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value || 0));
 const daysUntil = (date) => Math.ceil((new Date(date) - Date.now()) / 86400000);
@@ -15,9 +15,34 @@ const routeTabs = { '/': 'Overview', '/analytics': 'Analytics', '/subscriptions'
 const tabRoutes = { Overview: '/', Analytics: '/analytics', Subscriptions: '/subscriptions', Settings: '/settings' };
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API}${path}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...options });
-  if (!response.ok) throw new Error((await response.json()).error || 'Request failed');
-  return response.json();
+  // Automatically ensure all backend authentication and API routes include the /api prefix
+  let formattedPath = path;
+  if (formattedPath.startsWith('/auth') && !formattedPath.startsWith('/api/auth')) {
+    formattedPath = `/api${formattedPath}`;
+  } else if (formattedPath.startsWith('/india') && !formattedPath.startsWith('/api/india')) {
+    formattedPath = `/api${formattedPath}`;
+  }
+
+  const response = await fetch(`${API}${formattedPath}`, {
+    method: options.method || (options.body ? 'POST' : 'GET'),
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    },
+    credentials: 'include',
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    ...options
+  });
+
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    if (!response.ok) throw { status: response.status, message: data.error || 'Request failed' };
+    return data;
+  } else {
+    const text = await response.text();
+    throw new Error(`Unexpected server response (${response.status}): ${text.substring(0, 100)}`);
+  }
 }
 
 function AuthScreen({ onAuthenticated }) {
