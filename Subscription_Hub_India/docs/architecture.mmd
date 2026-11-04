@@ -1,0 +1,15 @@
+flowchart TD
+ UI[React dashboard] --> API[Express authenticated API]
+ API --> Discovery[Recurring debit detector]
+ CSV[User uploaded CSV] --> Discovery
+ API --> AA[Setu consent and data sessions]
+ AA --> Discovery
+ Discovery --> Review[Candidate confirmation]
+ Review --> DB[(MongoDB)]
+ API --> RZ[Razorpay Subscriptions]
+ RZ --> Hook[Signed webhook and reconciliation]
+ Hook --> DB
+ API --> DB
+ DB --> Analytics[Usage analysis and reminders]
+ Analytics --> Mail[SendGrid]
+ Analytics --> AI[Optional Gemini]
