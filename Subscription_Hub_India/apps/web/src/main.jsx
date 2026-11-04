@@ -15,12 +15,10 @@ const routeTabs = { '/': 'Overview', '/analytics': 'Analytics', '/subscriptions'
 const tabRoutes = { Overview: '/', Analytics: '/analytics', Subscriptions: '/subscriptions', Settings: '/settings' };
 
 async function request(path, options = {}) {
-  // Automatically ensure all backend authentication and API routes include the /api prefix
+  // Automatically prepend /api to any backend route path if it's missing
   let formattedPath = path;
-  if (formattedPath.startsWith('/auth') && !formattedPath.startsWith('/api/auth')) {
-    formattedPath = `/api${formattedPath}`;
-  } else if (formattedPath.startsWith('/india') && !formattedPath.startsWith('/api/india')) {
-    formattedPath = `/api${formattedPath}`;
+  if (!formattedPath.startsWith('/api')) {
+    formattedPath = formattedPath.startsWith('/') ? `/api${formattedPath}` : `/api/${formattedPath}`;
   }
 
   const response = await fetch(`${API}${formattedPath}`, {
