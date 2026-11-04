@@ -5,42 +5,39 @@ import IndiaBilling from './components/IndiaBilling.jsx';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import './styles.css';
 
-const API = import.meta.env.VITE_API_URL || "";
+const RAW_API = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').trim().replace(/\/+$/, '');
+const API = RAW_API.endsWith('/api') ? RAW_API : `${RAW_API}/api`;
 const emptyAnalytics = { monthlySpend: 0, activeCount: 0, canceledCount: 0, bySubscription: [], insights: [] };
-const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value || 0));
+const money = (value) => `Rs.${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const daysUntil = (date) => Math.ceil((new Date(date) - Date.now()) / 86400000);
-const todayLabel = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase();
+const todayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase();
 const iconFor = (name = '') => ({ Netflix: 'N', Spotify: '◖', CloudBox: '☁', 'Studio Fitness': '✳' }[name] || name.slice(0, 1).toUpperCase());
 const routeTabs = { '/': 'Overview', '/analytics': 'Analytics', '/subscriptions': 'Subscriptions', '/settings': 'Settings' };
 const tabRoutes = { Overview: '/', Analytics: '/analytics', Subscriptions: '/subscriptions', Settings: '/settings' };
 
 async function request(path, options = {}) {
-  // Ensure the path always starts with /api (preventing double /api if already present)
-  let cleanPath = path.startsWith('/') ? path : `/${path}`;
-  if (!cleanPath.startsWith('/api/')) {
-    cleanPath = `/api${cleanPath}`;
-  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const finalPath = cleanPath.startsWith('/api/') ? cleanPath.slice(4) : cleanPath;
+  const token = localStorage.getItem('subhub_token') || localStorage.getItem('token') || '';
 
-  const response = await fetch(`${API}${cleanPath}`, {
-    method: options.method || (options.body ? 'POST' : 'GET'),
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
+  const response = await fetch(`${API}${finalPath}`, {
     credentials: 'include',
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    ...options
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
   });
 
-  const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    const data = await response.json();
-    if (!response.ok) throw { status: response.status, message: data.error || 'Request failed' };
-    return data;
-  } else {
-    const text = await response.text();
-    throw new Error(`Unexpected server response (${response.status}): ${text.substring(0, 100)}`);
-  }
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json()
+    : { error: `Request failed with status ${response.status}` };
+
+  if (!response.ok) throw new Error(data.error || 'Request failed');
+  return data;
 }
 
 function AuthScreen({ onAuthenticated }) {
