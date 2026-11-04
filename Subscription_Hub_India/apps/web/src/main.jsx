@@ -44,7 +44,7 @@ function AuthScreen({ onAuthenticated }) {
     setBusy(true);
     try {
       const payload = { name, email, password, token };
-      const result = await request(`/auth/${mode}`, { method: 'POST', body: JSON.stringify(payload) });
+      const result = await request(`/api/auth/${mode}`, { method: 'POST', body: JSON.stringify(payload) });
       if (mode === 'login') onAuthenticated(result.user);
       else {
         if (!emailOnly) { setMode('login'); setPassword(''); setConfirmPassword(''); navigate('/', { replace: true }); }
