@@ -78,6 +78,7 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ error: err.status ? err.message : 'Unexpected server error.' }); 
 });
 
+// Initialize repository mode on boot
 const mode = await initializeRepository();
 console.log(`[cron] ${process.env.ENABLE_CRON === 'true' ? `enabled, schedule "${process.env.CRON_SCHEDULE || '0 0 * * *'}"` : 'disabled (set ENABLE_CRON=true)'}`);
 
@@ -92,5 +93,11 @@ if (process.env.ENABLE_CRON === 'true') {
   }, { timezone: process.env.CRON_TIMEZONE || 'Asia/Kolkata' });
 }
 
-const port = Number(process.env.PORT || 4000);
-app.listen(port, () => console.log(`Subscription Hub API listening on :${port} (${mode} data)`));
+// Only run app.listen if we are running locally (not inside Vercel's serverless environment)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  const port = Number(process.env.PORT || 4000);
+  app.listen(port, () => console.log(`Subscription Hub API listening on :${port} (${mode} data)`));
+}
+
+// Export app for Vercel Serverless Function deployment
+export default app;
