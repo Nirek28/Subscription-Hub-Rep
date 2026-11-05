@@ -25,8 +25,10 @@ test('India API flows with mocked providers: ownership, consent, payment signatu
  else if(u.pathname==='/v1/subscriptions/sub_test'){fetches++;data={id:'sub_test',status:paymentState,charge_at:1800000000,plan_id:'plan_test',notes:creationNotes};}
  else if(u.pathname==='/v1/invoices')data={items:[{id:'inv_1',payment_id:'pay_test',amount_paid:9900,status:'paid',currency:'INR'}]};
  else throw new Error('Unexpected Razorpay call '+u.pathname);
+ }else if(u.hostname==='orgservice-prod.setu.co'){
+ assert.equal(u.pathname,'/v1/users/login');assert.equal(opts.headers.client,'bridge');assert.equal(body.clientID,'client-test');assert.equal(body.secret,'secret-test');assert.equal(body.grant_type,'client_credentials');data={success:true,data:{token:'tok_test'}};
  }else if(u.hostname==='fiu-sandbox.setu.co'){
- assert.equal(opts.headers['x-product-instance-id'],'product-test');
+ assert.equal(opts.headers['x-product-instance-id'],'product-test');assert.equal(opts.headers.Authorization,'Bearer tok_test');
  if(u.pathname==='/v2/consents'&&opts.method==='POST'){assert.equal(body.vua,'9999999999');data={id:'consent_test',url:'https://fiu-sandbox.setu.co/consent',status:consentState};}
  else if(u.pathname.endsWith('/revoke')){consentState='REVOKED';data={status:consentState};}
  else if(u.pathname==='/v2/consents/consent_test')data={status:consentState};

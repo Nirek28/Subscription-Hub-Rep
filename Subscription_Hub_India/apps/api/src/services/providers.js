@@ -33,10 +33,14 @@ let setuTokenCache={token:'',exp:0,key:''};
 async function setuToken() {
   const id=envv('SETU_CLIENT_ID'),secret=envv('SETU_CLIENT_SECRET'),key=id+':'+secret;
   if(setuTokenCache.token && setuTokenCache.key===key && Date.now()<setuTokenCache.exp) return setuTokenCache.token;
-  const authUrl=new URL(envv('SETU_AUTH_URL')||(setuMode()==='live'?'https://prod.setu.co/api/v2/auth/token':'https://uat.setu.co/api/v2/auth/token'));
+  const authUrl=new URL(envv('SETU_AUTH_URL')||'https://orgservice-prod.setu.co/v1/users/login');
   if(authUrl.protocol!=='https:' || !(authUrl.hostname==='setu.co' || authUrl.hostname.endsWith('.setu.co'))) throw fail('SETU_AUTH_URL must be an HTTPS Setu endpoint.',503);
-  const r=await jsonFetch(authUrl.href,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({clientID:id,secret})},'Setu auth');
-  const token=r?.data?.token||r?.token||r?.access_token;
+  // The Account Aggregator gateway accepts tokens from the Bridge org-service login (needs "client: bridge" + grant_type).
+  const legacy=/orgservice|accountservice/.test(authUrl.hostname);
+  const authHeaders={'Content-Type':'application/json','Accept':'application/json',...(legacy?{client:'bridge'}:{})};
+  const authBody=legacy?{clientID:id,secret,grant_type:'client_credentials'}:{clientID:id,secret};
+  const r=await jsonFetch(authUrl.href,{method:'POST',headers:authHeaders,body:JSON.stringify(authBody)},'Setu auth');
+  const token=r?.data?.token||r?.data?.access_token||r?.token||r?.access_token;
   if(!token) throw fail('Setu auth did not return a token. Check SETU_CLIENT_ID and SETU_CLIENT_SECRET.',502);
   const ttl=Number(r?.data?.expiresIn||r?.expiresIn||1800);
   setuTokenCache={token,key,exp:Date.now()+Math.max(60,ttl-120)*1000};
