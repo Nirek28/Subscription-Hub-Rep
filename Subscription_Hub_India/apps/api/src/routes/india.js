@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { detectSubscriptions, demoTransactions, extractSetuTransactions, fingerprint, parseCSV } from '../services/discovery.js';
 import { get, put, list, remove, locked } from '../services/integrationStore.js';
 import { addSubscription, getSubscription, listSubscriptions } from '../services/repository.js';
-import { fail, setu, setuConfigured, setuMode, razorpayConfigured, razorpayMode } from '../services/providers.js';
+import { fail, setu, setuDiagnose, setuConfigured, setuMode, razorpayConfigured, razorpayMode } from '../services/providers.js';
 const router=Router();
 const route=fn=>async(req,res,next)=>{try{await fn(req,res);}catch(e){next(e);}};
 async function preview(transactions,userId,source){
@@ -36,6 +36,7 @@ async function seedSandbox(userId,detected){
  return {added,skipped};
 }
 router.get('/status',route(async(req,res)=>res.json({setu:{configured:setuConfigured(),mode:setuMode()},razorpay:{configured:razorpayConfigured(),mode:razorpayMode(),key:process.env.RAZORPAY_KEY_ID||''},gemini:!!process.env.GEMINI_API_KEY,email:!!(process.env.SENDGRID_API_KEY&&process.env.ALERT_FROM_EMAIL)})));
+router.get('/aa/diagnose',route(async(req,res)=>res.json(await setuDiagnose())));
 router.post('/discovery/preview',route(async(req,res)=>{
  const source=req.body.demo===true?'local-demo':'csv';
  const txs=source==='local-demo'?demoTransactions():parseCSV(req.body.csv);

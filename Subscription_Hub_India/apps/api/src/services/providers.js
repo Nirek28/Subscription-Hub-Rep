@@ -18,6 +18,8 @@ async function jsonFetch(url,options,provider) {
   if(!response.ok) {
     console.error(`[${provider}] ${options.method||'GET'} ${new URL(url).pathname} -> ${response.status}`, JSON.stringify(data));
     console.error(`[${provider}] raw body: ${raw.slice(0,500)} | content-type: ${response.headers.get('content-type')} | server: ${response.headers.get('server')}`);
+    const blocked=provider.startsWith('Setu') && response.status===403 && !raw.trim().startsWith('{') && /awselb|cloudfront|cloudflare|<html/i.test(raw+(response.headers.get('server')||''));
+    if(blocked) throw Object.assign(fail(`${provider} firewall blocked this server (HTTP 403 before any login). Your credentials were not checked. Setu must allowlist this host's outbound IPs; until then use CSV import or run the app from an allowed network.`,502),{code:'SETU_FIREWALL'});
     const detail=String(data?.errorMsg||data?.error?.message||data?.message||data?.error||data?.code||'').slice(0,200);
     throw fail(`${provider} rejected the request (${response.status}).${detail?` Provider says: ${detail}.`:''} Check credentials, product settings and provider dashboard.`,502);
   }
@@ -56,4 +58,17 @@ export async function setu(path,method='GET',body) {
   const token=(envv('SETU_CLIENT_ID') && envv('SETU_CLIENT_SECRET')) ? await setuToken() : staticToken;
   headers.Authorization=`Bearer ${token}`;
   return jsonFetch(base.href.replace(/\/$/,'')+path,{method,headers,...(body?{body:JSON.stringify(body)}:{})},'Setu');
+}
+// Safe connectivity check for the Setu sandbox: never returns secrets or tokens.
+export async function setuDiagnose() {
+  const out={configured:setuConfigured(),mode:setuMode(),baseHost:null,authStep:'skipped',consentApi:'skipped',detail:''};
+  try{out.baseHost=new URL(envv('SETU_BASE_URL')).hostname;}catch{out.detail='SETU_BASE_URL is missing or invalid.';return out;}
+  if(!out.configured){out.detail='Setu environment variables are incomplete.';return out;}
+  if(envv('SETU_CLIENT_ID') && envv('SETU_CLIENT_SECRET')){
+    try{await setuToken();out.authStep='ok';}
+    catch(e){out.authStep=e.code==='SETU_FIREWALL'?'blocked-by-firewall':'rejected';out.detail=e.message;return out;}
+  }
+  try{await setu('/consents/diagnostic-probe');out.consentApi='ok';}
+  catch(e){out.consentApi=e.code==='SETU_FIREWALL'?'blocked-by-firewall':'reachable';out.detail=e.message;}
+  return out;
 }
