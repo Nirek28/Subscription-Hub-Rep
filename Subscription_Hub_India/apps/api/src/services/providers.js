@@ -28,14 +28,28 @@ export async function razorpay(path,method='GET',body) {
   if(razorpayMode()==='live' && process.env.ENABLE_LIVE_PAYMENTS!=='true') throw fail('Live payments are disabled. Use test keys or explicitly enable approved live payments.',503);
   return jsonFetch(`https://api.razorpay.com/v1${path}`,{method,headers:{Authorization:`Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64')}`,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})},'Razorpay');
 }
+let setuTokenCache={token:'',exp:0,key:''};
+// Setu auth: exchange clientID+secret for a short-lived Bearer token (docs.setu.co/dev-tools/bridge/v1/generate-token).
+async function setuToken() {
+  const id=envv('SETU_CLIENT_ID'),secret=envv('SETU_CLIENT_SECRET'),key=id+':'+secret;
+  if(setuTokenCache.token && setuTokenCache.key===key && Date.now()<setuTokenCache.exp) return setuTokenCache.token;
+  const authUrl=new URL(envv('SETU_AUTH_URL')||(setuMode()==='live'?'https://prod.setu.co/api/v2/auth/token':'https://uat.setu.co/api/v2/auth/token'));
+  if(authUrl.protocol!=='https:' || !(authUrl.hostname==='setu.co' || authUrl.hostname.endsWith('.setu.co'))) throw fail('SETU_AUTH_URL must be an HTTPS Setu endpoint.',503);
+  const r=await jsonFetch(authUrl.href,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({clientID:id,secret})},'Setu auth');
+  const token=r?.data?.token||r?.token||r?.access_token;
+  if(!token) throw fail('Setu auth did not return a token. Check SETU_CLIENT_ID and SETU_CLIENT_SECRET.',502);
+  const ttl=Number(r?.data?.expiresIn||r?.expiresIn||1800);
+  setuTokenCache={token,key,exp:Date.now()+Math.max(60,ttl-120)*1000};
+  return token;
+}
 export async function setu(path,method='GET',body) {
   if(!setuConfigured()) throw fail('Configure your Setu FIU URL, product instance and server credentials in .env. Local sample discovery works without credentials.',503);
   if(setuMode()==='live' && process.env.ENABLE_LIVE_AA!=='true') throw fail('Live AA access requires approved onboarding and ENABLE_LIVE_AA=true.',503);
   const base=new URL(envv('SETU_BASE_URL'));
   if(base.protocol!=='https:' || !(base.hostname==='setu.co' || base.hostname.endsWith('.setu.co'))) throw fail('SETU_BASE_URL must be your HTTPS Setu FIU endpoint.',503);
-  const headers={'Content-Type':'application/json','Accept':'application/json','User-Agent':'Mozilla/5.0 (compatible; SubscriptionHub/1.0)','x-product-instance-id':envv('SETU_PRODUCT_INSTANCE_ID')};
-  // Prefer client id/secret (Setu v2 standard). A stale/blank SETU_ACCESS_TOKEN used to override them and caused 403s.
-  if(envv('SETU_CLIENT_ID') && envv('SETU_CLIENT_SECRET')) {headers['x-client-id']=envv('SETU_CLIENT_ID');headers['x-client-secret']=envv('SETU_CLIENT_SECRET');}
-  else headers.Authorization=`Bearer ${envv('SETU_ACCESS_TOKEN')}`;
+  const headers={'Content-Type':'application/json','Accept':'application/json','x-product-instance-id':envv('SETU_PRODUCT_INSTANCE_ID')};
+  const staticToken=envv('SETU_ACCESS_TOKEN');
+  const token=(envv('SETU_CLIENT_ID') && envv('SETU_CLIENT_SECRET')) ? await setuToken() : staticToken;
+  headers.Authorization=`Bearer ${token}`;
   return jsonFetch(base.href.replace(/\/$/,'')+path,{method,headers,...(body?{body:JSON.stringify(body)}:{})},'Setu');
 }
