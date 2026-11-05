@@ -2,15 +2,31 @@
   "manifest_version": 3,
   "minimum_chrome_version": "120",
   "name": "Subscription Hub Usage Tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Opt-in foreground browser time for your selected subscriptions.",
-  "permissions": ["storage", "alarms", "idle"],
-  "host_permissions": ["https://subscription-hub-rep.onrender.com/*"],
-  "optional_host_permissions": [
-    "https://*.netflix.com/*", "https://open.spotify.com/*", "https://*.canva.com/*",
-    "https://*.youtube.com/*", "https://*.primevideo.com/*", "https://*.chatgpt.com/*"
+  "permissions": [
+    "storage",
+    "alarms",
+    "idle"
   ],
-  "background": { "service_worker": "background.js", "type": "module" },
-  "action": { "default_popup": "popup.html", "default_title": "Subscription Hub usage" },
+  "host_permissions": [
+    "https://subscription-hub-rep.vercel.app/*"
+  ],
+  "optional_host_permissions": [
+    "https://*.netflix.com/*",
+    "https://open.spotify.com/*",
+    "https://*.canva.com/*",
+    "https://*.youtube.com/*",
+    "https://*.primevideo.com/*",
+    "https://*.chatgpt.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Subscription Hub usage"
+  },
   "incognito": "not_allowed"
 }

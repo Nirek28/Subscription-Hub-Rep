@@ -1,26 +1,28 @@
 {
-  "version": 2,
-  "builds": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "headers": [
     {
-      "src": "apps/web/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "apps/api/src/index.js",
-      "use": "@vercel/node"
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
     }
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/apps/api/src/index.js"
+      "source": "/api/:path*",
+      "destination": "https://trans-mailman-pills-pay.trycloudflare.com/api/:path*"
     },
     {
-      "source": "/(.*)",
-      "destination": "/apps/web/dist/$1"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
