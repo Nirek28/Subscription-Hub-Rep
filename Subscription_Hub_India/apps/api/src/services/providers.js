@@ -30,7 +30,7 @@ export async function setu(path,method='GET',body) {
   if(setuMode()==='live' && process.env.ENABLE_LIVE_AA!=='true') throw fail('Live AA access requires approved onboarding and ENABLE_LIVE_AA=true.',503);
   const base=new URL(process.env.SETU_BASE_URL);
   if(base.protocol!=='https:' || !(base.hostname==='setu.co' || base.hostname.endsWith('.setu.co'))) throw fail('SETU_BASE_URL must be your HTTPS Setu FIU endpoint.',503);
-  const headers={'Content-Type':'application/json','x-product-instance-id':process.env.SETU_PRODUCT_INSTANCE_ID};
+  const headers={'Content-Type':'application/json','Accept':'application/json','User-Agent':'Mozilla/5.0 (compatible; SubscriptionHub/1.0)','x-product-instance-id':process.env.SETU_PRODUCT_INSTANCE_ID};
   if(process.env.SETU_ACCESS_TOKEN) headers.Authorization=`Bearer ${process.env.SETU_ACCESS_TOKEN}`;
   else {headers['x-client-id']=process.env.SETU_CLIENT_ID;headers['x-client-secret']=process.env.SETU_CLIENT_SECRET;}
   return jsonFetch(base.href.replace(/\/$/,'')+path,{method,headers,...(body?{body:JSON.stringify(body)}:{})},'Setu');
