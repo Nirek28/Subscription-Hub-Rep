@@ -11,9 +11,11 @@ export function verifyHmac(body, signature, secret) {
 async function jsonFetch(url,options,provider) {
   let response;
   try {response=await fetch(url,{...options,signal:AbortSignal.timeout(20000),redirect:'error'});} catch {throw fail(`${provider} could not be reached. Try again.`,502);}
-  const data=await response.json().catch(()=>({}));
+  const raw=await response.text();
+  let data={};try{data=raw?JSON.parse(raw):{};}catch{}
   if(!response.ok) {
     console.error(`[${provider}] ${options.method||'GET'} ${new URL(url).pathname} -> ${response.status}`, JSON.stringify(data));
+    console.error(`[${provider}] raw body: ${raw.slice(0,500)} | content-type: ${response.headers.get('content-type')} | server: ${response.headers.get('server')}`);
     throw fail(`${provider} rejected the request (${response.status}). Check credentials, product settings and provider dashboard.`,502);
   }
   return data;
