@@ -1,3 +1,4 @@
+import extensionRoutes from './extension/routes.js';
 import dotenv from 'dotenv';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +29,8 @@ const app = express();
 // Set TRUST_PROXY=2 if all visitors still appear to share one rate-limit bucket.
 app.set('trust proxy', Number(process.env.TRUST_PROXY || 1));
 app.use(helmet());
+// Extension routes have their own session/device authentication and CORS.
+app.use('/api/extension', express.json({ limit: '256kb' }), extensionRoutes);
 app.use(cors({
   origin: true,
   credentials: true

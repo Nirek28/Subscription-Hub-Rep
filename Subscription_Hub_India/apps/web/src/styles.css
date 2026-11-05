@@ -92,3 +92,5 @@
 .status-badge.pending { background: #382c16; color: #fcd34d; border: 1px solid #57441d; }
 .status-badge.active  { background: #193321; color: #86efac; border: 1px solid #244b31; }
 .status-badge.revoked { background: #311c1e; color: #fca5a5; border: 1px solid #4f2529; }
+
+.extension-settings h3{margin-top:24px}.extension-settings p{line-height:1.6}.extension-settings select{max-width:50%;padding:9px;border:1px solid #cab9a7;border-radius:8px;background:#fffaf4}.extension-settings small{display:block;margin-top:5px}.extension-code{margin-top:16px}.extension-code input{width:100%;padding:12px;box-sizing:border-box;font-family:monospace}.extension-settings button{margin:5px 5px 5px 0}.extension-settings [role=status]{color:#754523}

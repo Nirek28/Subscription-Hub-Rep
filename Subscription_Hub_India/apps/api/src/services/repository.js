@@ -1,3 +1,4 @@
+import { browserUsage } from '../extension/store.js';
 import mongoose from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import User from '../models/User.js';
@@ -95,7 +96,7 @@ export async function addSubscription(record, userId) {
   memorySubscriptions.push(structuredClone(next));
   return structuredClone(next);
 }
-export async function listUsage(userId) {
+async function listBaseUsage(userId) {
   if (usingMongo) return (await UsageLog.find({ userId }).lean()).map((x) => ({ ...x, id: String(x._id) }));
   return structuredClone(memoryUsage.filter((x) => x.userId === userId));
 }
@@ -128,4 +129,10 @@ export async function consumeAccountToken(purpose, tokenHash, passwordHash, now 
   if (purpose === 'reset') user.sessionVersion = (user.sessionVersion || 0) + 1;
   delete user[tokenField]; delete user[expiresField];
   return safeUser(user);
+}
+
+// Merge browser events without modifying existing manual/provider usage storage.
+export async function listUsage(userId) {
+  const [existing, browser] = await Promise.all([listBaseUsage(userId), browserUsage(userId)]);
+  return [...existing, ...browser.map(x => ({ ...x, id: String(x._id) }))];
 }

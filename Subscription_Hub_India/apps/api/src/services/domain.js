@@ -25,6 +25,8 @@ export function summarizeAnalytics(subscriptions, usageLogs) {
       hours,
       costPerHour: hours > 0 ? Number((Number(s.monthlyCost || 0) / hours).toFixed(2)) : null,
       hoursThisMonth: hours,
+      browserHours: logs.filter(log => log.source === 'browser').reduce((sum, log) => sum + Number(log.hours || 0), 0),
+      manualHours: logs.filter(log => log.source === 'manual').reduce((sum, log) => sum + Number(log.hours || 0), 0),
       usageCostThisMonth: Number(logs.reduce((sum, log) => sum + Number(log.cost || 0), 0).toFixed(2))
     };
   });

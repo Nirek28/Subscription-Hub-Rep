@@ -1,0 +1,44 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import express from 'express';
+import routes from './routes.js';
+import { createUser, addSubscription, listUsage } from '../services/repository.js';
+import { setSessionCookie } from '../services/auth.js';
+import { summarizeAnalytics } from '../services/domain.js';
+import { splitInterval, validateEvent } from './core.js';
+import * as store from './store.js';
+test('pairing, account isolation, retry deduplication, expiry, revocation and deletion',async(t)=>{
+ process.env.WEB_ORIGIN='https://subscription-hub-rep.vercel.app/';
+ const app=express();app.use('/api/extension',express.json(),routes);app.use((e,_q,r,_n)=>r.status(500).json({error:e.message}));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>server.close());
+ const base=`http://127.0.0.1:${server.address().port}/api/extension`;
+ const a=await createUser({name:'A',email:'extension-a@example.test',passwordHash:'test'}),b=await createUser({name:'B',email:'extension-b@example.test',passwordHash:'test'});
+ let cookie;setSessionCookie({setHeader:(_n,v)=>cookie=v.split(';')[0]},a);
+ const own=await addSubscription({name:'Canva',monthlyCost:500},a.id),other=await addSubscription({name:'Netflix',monthlyCost:500},b.id);
+ async function call(path,method='GET',body,token,web=false,origin){const r=await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(web?{Cookie:cookie,Origin:origin||'https://subscription-hub-rep.vercel.app'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()};}
+ assert.equal((await call('/settings')).status,401);
+ assert.equal((await call('/pairing-code','POST',{},null,true,'https://evil.example')).status,403);
+ assert.equal((await call('/settings','PUT',{mappings:[{key:'canva',subscriptionId:other.id}]},null,true)).status,400);
+ assert.equal((await call('/settings','PUT',{mappings:[{key:'canva',subscriptionId:own.id}]},null,true)).status,200);
+ const code=(await call('/pairing-code','POST',{},null,true)).data.code;
+ const paired=await call('/pair','POST',{code,name:'Test browser'});assert.equal(paired.status,200);assert.equal((await call('/pair','POST',{code})).status,400);
+ const token=paired.data.token;
+ assert.equal((await call('/config','GET',undefined,token)).data.mappings[0].subscriptionId,own.id);
+ const now=Date.now(),event={eventId:'12345678-1234-1234-1234-123456789012',subscriptionId:own.id,startedAt:new Date(now-60000).toISOString(),endedAt:new Date(now).toISOString(),activeSeconds:60};
+ assert.equal((await call('/usage/batch','POST',{events:[event]})).status,401);
+ assert.deepEqual((await call('/usage/batch','POST',{events:[event]},token)).data.accepted,[event.eventId]);
+ await Promise.all([call('/usage/batch','POST',{events:[event]},token),call('/usage/batch','POST',{events:[event]},token)]);
+ const logs=await listUsage(a.id);assert.equal(logs.length,1);assert.equal(logs[0].hours,1/60);assert.equal(summarizeAnalytics([own],logs).bySubscription[0].browserHours,1/60);assert.equal((await listUsage(b.id)).length,0);
+ assert.equal((await call('/usage/batch','POST',{events:[{...event,eventId:'abcdef12-1234-1234-1234-123456789012',subscriptionId:other.id}]},token)).data.rejected.length,1);
+ assert.equal((await call('/usage/batch','POST',{events:[{...event,activeSeconds:999}]},token)).data.rejected.length,1);
+ assert.equal((await call('/usage/batch','POST',{events:Array(101).fill(event)},token)).status,400);
+ const old={...event,startedAt:new Date(now-15*86400000).toISOString(),endedAt:new Date(now-15*86400000+60000).toISOString()};assert.equal((await call('/usage/batch','POST',{events:[old]},token)).data.rejected.length,1);
+ const devices=(await call('/settings','GET',undefined,null,true)).data.devices;assert.equal(devices.length,1);assert.ok(devices[0].lastSync);
+ await call('/devices/'+paired.data.deviceId,'DELETE',{},null,true);assert.equal((await call('/config','GET',undefined,token)).status,401);assert.equal((await listUsage(a.id)).length,1);
+ await call('/history','DELETE',{},null,true);assert.equal((await listUsage(a.id)).length,0);
+ const expCode=(await call('/pairing-code','POST',{},null,true)).data.code;const pairing=(await store.rows(a.id,'pair:'))[0];await store.put(pairing._id,a.id,{expiresAt:Date.now()-1});assert.equal((await call('/pair','POST',{code:expCode})).status,400);
+});
+test('India month boundary splits duration without moving offline usage to today',()=>{
+ const start=Date.parse('2026-10-31T18:29:30Z'),end=Date.parse('2026-10-31T18:30:30Z');const parts=splitInterval({start,end,seconds:60});assert.equal(parts.length,2);assert.equal(parts.reduce((n,p)=>n+p.hours,0),1/60);assert.equal(parts[1].recordedAt.toISOString(),'2026-10-31T18:30:00.000Z');
+ assert.throws(()=>validateEvent({eventId:'valid-event-id-123',subscriptionId:'x',startedAt:new Date(start).toISOString(),endedAt:new Date(start+100000).toISOString(),activeSeconds:100},end));
+});

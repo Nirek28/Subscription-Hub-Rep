@@ -1,3 +1,4 @@
+import BrowserExtension from './components/BrowserExtension.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import SubscriptionManager from './components/SubscriptionManager.jsx';
@@ -214,13 +215,13 @@ function AnalyticsPage({ analytics, subscriptions, onLogUsage, onChanged }) {
       <article className="panel summary-tile"><span>Subscriptions</span><b>{analytics.activeCount || 0}</b><small>Active right now</small></article>
     </div>
     <div className="dashboard-grid analytics-dashboard">
-      <article className="panel analytics-chart-panel"><div className="panel-heading"><div><h2>Cost and usage by subscription</h2><p className="muted">Compare your monthly costs with the usage you enter.</p></div><button className="secondary" onClick={onLogUsage} disabled={!subscriptions.length}>＋ Log usage</button></div>
+      <article className="panel analytics-chart-panel"><div className="panel-heading"><div><h2>Cost and usage by subscription</h2><p className="muted">Compare monthly costs with manual and browser-tracked usage.</p></div><button className="secondary" onClick={onLogUsage} disabled={!subscriptions.length}>＋ Log usage</button></div>
         <div className="chart-legend"><span><i className="legend-cost"/>Monthly cost</span><span><i className="legend-usage"/>Usage (hrs)</span></div>
-        <div className="analytics-bars">{rows.map((row) => <div className="analytics-bar-row" key={row.subscriptionId}><div className="analytics-bar-label"><b>{row.name}</b><small>{Number(row.hoursThisMonth || 0).toFixed(1)} tracked hrs · {row.costPerHour == null ? 'No usage data' : `${money(row.costPerHour)} / hr`}</small></div><div className="analytics-bar-track"><i className="analytics-cost-fill" style={{width:`${Math.max(3, Number(row.monthlyCost || 0) / maxCost * 100)}%`}}/></div><b className="analytics-value">{money(row.monthlyCost)}</b></div>)}{!rows.length && <div className="empty">Usage and cost details will appear when data is available.</div>}</div>
+        <div className="analytics-bars">{rows.map((row) => <div className="analytics-bar-row" key={row.subscriptionId}><div className="analytics-bar-label"><b>{row.name}</b><small>{Number(row.hoursThisMonth || 0).toFixed(2)} tracked hrs ({Number(row.browserHours || 0).toFixed(2)} browser / {Number(row.manualHours || 0).toFixed(2)} manual) · {row.costPerHour == null ? 'No usage data' : `${money(row.costPerHour)} / hr`}</small></div><div className="analytics-bar-track"><i className="analytics-cost-fill" style={{width:`${Math.max(3, Number(row.monthlyCost || 0) / maxCost * 100)}%`}}/></div><b className="analytics-value">{money(row.monthlyCost)}</b></div>)}{!rows.length && <div className="empty">Usage and cost details will appear when data is available.</div>}</div>
       </article>
       <article className="panel insights-panel"><div className="panel-heading"><div><h2>Usage review</h2><p className="muted">Services with under five tracked hours.</p></div><span className="insight-spark">✦</span></div>
-        {insights.length ? insights.map((row) => <div className="review-item" key={row.subscriptionId}><div><b>{row.name}</b><p>{Number(row.hoursThisMonth || 0).toFixed(1)} hours tracked against {money(row.monthlyCost)} per month.</p></div><strong>{row.hoursThisMonth === 0 ? 'No use' : 'Low use'}</strong></div>) : <div className="empty">{rows.length ? 'No low-usage services found in the current data.' : 'Add a subscription and usage entry to see low-usage insights.'}</div>}
-        <div className="insight-disclaimer">Insights use only the usage details you enter; they are not financial advice.</div>
+        {insights.length ? insights.map((row) => <div className="review-item" key={row.subscriptionId}><div><b>{row.name}</b><p>{Number(row.hoursThisMonth || 0).toFixed(1)} hours tracked against {money(row.monthlyCost)} per month.</p></div><strong>{row.hoursThisMonth === 0 ? 'No tracked data' : 'Low tracked use'}</strong></div>) : <div className="empty">{rows.length ? 'No low-usage services found in the current data.' : 'Add a subscription and usage entry to see low-usage insights.'}</div>}
+        <div className="insight-disclaimer">Insights use recorded usage, which may exclude other devices. No tracked data does not mean no use.</div>
       </article>
     </div>
     <div className="analytics-extra"><AiInsightsPanel subscriptions={subscriptions} onChanged={onChanged} /></div>
@@ -238,6 +239,7 @@ function SettingsPage() {
     ['SendGrid', 'Renewal email', status?.email ? 'Configured' : 'Preview only']
   ];
   return <div className="settings-page">
+    <BrowserExtension request={request} />
     <article className="panel settings-card"><div className="panel-heading"><div><h2>Workspace preferences</h2><p className="muted">Current local prototype configuration.</p></div></div>
       <div className="settings-row"><div><b>Display currency</b><small>Amounts are formatted in Indian Rupees.</small></div><span className="settings-badge">INR · ₹</span></div>
       <div className="settings-row"><div><b>Data mode</b><small>Without MongoDB, account data is temporary and resets when the API restarts.</small></div><span className="settings-badge">Demo / local</span></div>

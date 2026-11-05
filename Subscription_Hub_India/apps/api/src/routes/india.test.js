@@ -40,8 +40,34 @@ test('India API flows with mocked providers: ownership, consent, payment signatu
  const server=app.listen(0);await new Promise(resolve=>server.once('listening',resolve));
  t.after(()=>{globalThis.fetch=realFetch;server.close();server.closeAllConnections();});
  const base=`http://localhost:${server.address().port}/api`;
- async function request(path,body,cookie='',extra={}){const r=await realFetch(base+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',cookie,...extra},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
- async function user(email){assert.equal((await request('/api/auth/register',{name:'Tester',email,password:'password123'})).status,201);return (await request('/api/auth/login',{email,password:'password123'})).cookie;}
+ async function request(path,body,cookie='',extra={}){const r=await realFetch(base+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',cookie,...extra},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json().catch(() => { throw new Error('Non-JSON response: ' + r.status + ' ' + r.url); }),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
+ async function user(email) {
+  const registration = await request('/auth/register', {
+    name: 'Tester',
+    email,
+    password: 'password123'
+  });
+
+  assert.equal(
+    registration.status,
+    201,
+    'REGISTER ERROR: ' + JSON.stringify(registration.data)
+  );
+
+  const login = await request('/auth/login', {
+    email,
+    password: 'password123'
+  });
+
+  assert.equal(
+    login.status,
+    200,
+    'LOGIN ERROR: ' + JSON.stringify(login.data)
+  );
+
+  assert.ok(login.cookie, 'Login did not return a session cookie');
+  return login.cookie;
+}
  const a=await user('a@example.test'),b=await user('b@example.test');
  await t.test('unauthenticated discovery rejected',async()=>assert.equal((await request('/india/discovery/preview',{demo:true})).status,401));
  let batch;
@@ -84,7 +110,7 @@ test('India API flows with mocked providers: ownership, consent, payment signatu
  });
  await t.test('pending API ownership and recovery, including signed webhook repair',async()=>{
  const requestId='12345678-1234-1234-1234-123456789abc';
- const uid=(await request('/api/auth/me',undefined,a)).data.user.id;
+ const uid=(await request('/auth/me', undefined, a)).data.user.id;
  const makePending=()=>put('checkout',`${uid}:${requestId}`,uid,{pending:true,planId:'plan_test',remoteId:'sub_test',mode:'test'});
  await makePending();
  assert.equal((await request('/razorpay/pending-checkouts',undefined,a)).data[0].requestId,requestId);
