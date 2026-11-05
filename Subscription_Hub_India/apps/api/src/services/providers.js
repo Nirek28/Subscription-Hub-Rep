@@ -12,7 +12,7 @@ export function verifyHmac(body, signature, secret) {
 }
 async function jsonFetch(url,options,provider) {
   let response;
-  try {response=await fetch(url,{...options,signal:AbortSignal.timeout(20000),redirect:'error'});} catch {throw fail(`${provider} could not be reached. Try again.`,502);}
+  try {response=await fetch(url,{...options,headers:{'User-Agent':'Mozilla/5.0 (compatible; SubscriptionHub/1.0)',...(options.headers||{})},signal:AbortSignal.timeout(20000),redirect:'error'});} catch {throw fail(`${provider} could not be reached. Try again.`,502);}
   const raw=await response.text();
   let data={};try{data=raw?JSON.parse(raw):{};}catch{}
   if(!response.ok) {
