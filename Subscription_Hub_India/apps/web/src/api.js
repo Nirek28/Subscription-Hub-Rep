@@ -9,7 +9,7 @@
 // Optional: set VITE_API_URL to a full origin (e.g. https://my-api.onrender.com)
 // to call the API directly. Only do this if you also relax the cookie settings,
 // because a Vercel -> Render call is cross-site.
-const ORIGIN = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/+$/, '');
+const ORIGIN = '';
 
 // Every server route lives under /api. Callers may pass '/india/status' or
 // '/api/auth/me'; both resolve to '/api/...'.
